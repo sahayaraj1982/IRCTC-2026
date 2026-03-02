@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRCTC</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 15px; }
+        .container { max-width: 800px; margin: auto; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: #003366; color: white; padding: 20px; text-align: center; }
+        .input-form { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; background: #fafafa; border-bottom: 2px solid #eee; }
+        .field { display: flex; flex-direction: column; }
+        label { font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #444; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-weight: bold; }
+        .btn-save { background: #218838; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; }
+        .toolbar { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #fff; gap: 10px; }
+        .search { flex-grow: 1; }
+        .search input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
+        .btn-tool { padding: 8px 15px; background: white; border: 1px solid #003366; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
+        .table-wrap { padding: 10px; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8f9fa; padding: 10px; text-align: left; border-bottom: 2px solid #003366; font-size: 13px; }
+        td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 15px; }
+        .date-text { color: #d9534f; font-weight: bold; }
+        .name-text { font-weight: bold; color: #000; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header"><h2>IRCTC (NAME LIST)</h2></div>
+
+    <div class="input-form">
+        <div class="field"><label>DATE</label><input type="date" id="tDate"></div>
+        <div class="field"><label>NAME</label><input type="text" id="tName"></div>
+        <div class="field"><label>MOBILE</label><input type="tel" id="tPhone"></div>
+        <div class="field"><label>DETAILS</label><input type="text" id="tDetails"></div>
+        <button class="btn-save" id="mainBtn" onclick="handleData()">SAVE ENTRY</button>
+    </div>
+
+    <div class="toolbar">
+        <div class="search"><input type="text" id="find" onkeyup="drawTable()" placeholder="பெயர் அல்லது எண்ணை தேடுக..."></div>
+        <button class="btn-tool" onclick="exportData()">EXPORT</button>
+        <button class="btn-tool" onclick="document.getElementById('impFile').click()">IMPORT</button>
+        <input type="file" id="impFile" hidden onchange="importCSV(event)">
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>DATE (வரிசைப்படி)</th>
+                    <th>NAME</th>
+                    <th>MOBILE</th>
+                    <th>DETAILS</th>
+                    <th>ACTIONS</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let database = JSON.parse(localStorage.getItem('proAccountDB')) || [];
+    let editID = null;
+
+    function handleData() {
+        const d = document.getElementById('tDate').value;
+        const n = document.getElementById('tName').value;
+        const p = document.getElementById('tPhone').value;
+        const dt = document.getElementById('tDetails').value;
+
+        if(!d || !n) return alert("விவரங்களை நிரப்புக!");
+
+        const obj = { date: d, name: n, phone: p, details: dt };
+
+        if(editID === null) {
+            database.push(obj);
+        } else {
+            database[editID] = obj;
+            editID = null;
+            document.getElementById('mainBtn').innerText = "SAVE ENTRY";
+        }
+
+        database.sort((a, b) => new Date(a.date) - new Date(b.date));
+        localStorage.setItem('proAccountDB', JSON.stringify(database));
+        drawTable();
+        clearInput();
+    }
+
+    function drawTable() {
+        const body = document.getElementById('tableBody');
+        const filter = document.getElementById('find').value.toLowerCase();
+        body.innerHTML = "";
+
+        database.forEach((item, index) => {
+            if(item.name.toLowerCase().includes(filter) || item.phone.includes(filter)) {
+                const s = item.date.split("-");
+                const dDisplay = s.length > 1 ? `${s[2]}/${s[1]}/${s[0]}` : item.date;
+
+                body.innerHTML += `<tr>
+                    <td class="date-text">${dDisplay}</td>
+                    <td class="name-text">${item.name}</td>
+                    <td>${item.phone}</td>
+                    <td>${item.details}</td>
+                    <td>
+                        <span style="color:blue; cursor:pointer;" onclick="goEdit(${index})">EDIT</span> | 
+                        <span style="color:red; cursor:pointer;" onclick="goDelete(${index})">DEL</span>
+                    </td>
+                </tr>`;
+            }
+        });
+    }
+
+    function goEdit(i) {
+        const itm = database[i];
+        document.getElementById('tDate').value = itm.date;
+        document.getElementById('tName').value = itm.name;
+        document.getElementById('tPhone').value = itm.phone;
+        document.getElementById('tDetails').value = itm.details;
+        editID = i;
+        document.getElementById('mainBtn').innerText = "UPDATE ENTRY";
+        window.scrollTo(0, 0);
+    }
+
+    function goDelete(i) {
+        if(confirm("நீக்கலாமா?")) {
+            database.splice(i, 1);
+            localStorage.setItem('proAccountDB', JSON.stringify(database));
+            drawTable();
+        }
+    }
+
+    function clearInput() {
+        document.getElementById('tDate').value = "";
+        document.getElementById('tName').value = "";
+        document.getElementById('tPhone').value = "";
+        document.getElementById('tDetails').value = "";
+    }
+
+    function exportData() {
+        if (database.length === 0) return alert("டேட்டா இல்லை!");
+        let csv = "Date,Name,Mobile,Details\n";
+        database.forEach(r => csv += `${r.date},${r.name},${r.phone},${r.details}\n`);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
+        a.download = 'Statement_Backup.csv';
+        a.click();
+    }
+
+    function importCSV(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const rows = event.target.result.split("\n").slice(1);
+            rows.forEach(row => {
+                const p = row.split(",");
+                if(p.length >= 4) {
+                    database.push({date: p[0], name: p[1], phone: p[2], details: p[3].trim()});
+                }
+            });
+            database.sort((a, b) => new Date(a.date) - new Date(b.date));
+            localStorage.setItem('proAccountDB', JSON.stringify(database));
+            drawTable();
+            alert("இம்போர்ட் முடிந்தது!");
+        };
+        reader.readAsText(file);
+    }
+
+    drawTable();
+</script>
+</body>
+</html>
