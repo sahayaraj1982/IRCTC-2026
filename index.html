@@ -6,15 +6,15 @@
     <title>IRCTC</title>
     <style>
         body { font-family: 'Segoe UI', Arial, sans-serif; background-color: #f0f4f8; margin: 0; padding: 15px; }
-        .container { max-width: 800px; margin: auto; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
+        .container { max-width: 900px; margin: auto; background: white; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background: #003366; color: white; padding: 20px; text-align: center; }
-        .input-form { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; background: #fafafa; border-bottom: 2px solid #eee; }
+        .input-form { padding: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; background: #fafafa; border-bottom: 2px solid #eee; }
         .field { display: flex; flex-direction: column; }
         label { font-size: 11px; font-weight: bold; margin-bottom: 3px; color: #444; }
         input { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; font-weight: bold; }
-        .btn-save { background: #218838; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; }
-        .toolbar { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #fff; gap: 10px; }
-        .search { flex-grow: 1; }
+        .btn-save { background: #218838; color: white; border: none; padding: 12px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; grid-column: 1 / -1; }
+        .toolbar { padding: 15px; display: flex; justify-content: space-between; align-items: center; background: #fff; gap: 10px; flex-wrap: wrap; }
+        .search { flex-grow: 1; min-width: 200px; }
         .search input { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ddd; }
         .btn-tool { padding: 8px 15px; background: white; border: 1px solid #003366; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; }
         .table-wrap { padding: 10px; overflow-x: auto; }
@@ -23,57 +23,79 @@
         td { padding: 12px 10px; border-bottom: 1px solid #eee; font-size: 15px; }
         .date-text { color: #d9534f; font-weight: bold; }
         .name-text { font-weight: bold; color: #000; text-transform: uppercase; }
+        
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); justify-content: center; align-items: center; z-index: 100; }
+        .modal-content { background: white; padding: 20px; border-radius: 8px; width: 300px; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="header"><h2>IRCTC (NAME LIST)</h2></div>
+    <div class="header"><h2>IRCTC (NAME LIST) <span id="countDisplay" style="font-size: 14px; margin-left:10px;">(0)</span></h2></div>
 
     <div class="input-form">
         <div class="field"><label>DATE</label><input type="date" id="tDate"></div>
         <div class="field"><label>NAME</label><input type="text" id="tName"></div>
         <div class="field"><label>MOBILE</label><input type="tel" id="tPhone"></div>
         <div class="field"><label>DETAILS</label><input type="text" id="tDetails"></div>
+        <div class="field"><label>EMAIL</label><input type="email" id="tEmail"></div>
         <button class="btn-save" id="mainBtn" onclick="handleData()">SAVE ENTRY</button>
     </div>
 
     <div class="toolbar">
-        <div class="search"><input type="text" id="find" onkeyup="drawTable()" placeholder="பெயர் அல்லது எண்ணை தேடுக..."></div>
+        <div class="search"><input type="text" id="find" onkeyup="drawTable()" placeholder="தேடுக..."></div>
         <button class="btn-tool" onclick="exportData()">EXPORT</button>
         <button class="btn-tool" onclick="document.getElementById('impFile').click()">IMPORT</button>
+        <button class="btn-tool" onclick="document.getElementById('driveModal').style.display='flex'">DRIVE</button>
         <input type="file" id="impFile" hidden onchange="importCSV(event)">
     </div>
 
     <div class="table-wrap">
         <table>
-            <thead>
-                <tr>
-                    <th>DATE (வரிசைப்படி)</th>
-                    <th>NAME</th>
-                    <th>MOBILE</th>
-                    <th>DETAILS</th>
-                    <th>ACTIONS</th>
-                </tr>
-            </thead>
+            <thead><tr><th>DATE</th><th>NAME</th><th>MOBILE</th><th>DETAILS</th><th>EMAIL</th><th>ACTIONS</th></tr></thead>
             <tbody id="tableBody"></tbody>
         </table>
     </div>
 </div>
 
+<div id="driveModal" class="modal">
+    <div class="modal-content">
+        <h3>Google Drive URL</h3>
+        <input type="text" id="driveUrl" placeholder="Link-ஐ இங்கே ஒட்டவும்" style="width: 90%; margin-bottom: 10px; padding: 8px;">
+        <br>
+        <button class="btn-tool" onclick="saveDriveLink()">SAVE</button>
+        <button class="btn-tool" onclick="openDriveLink()">OPEN</button>
+        <button class="btn-tool" style="border-color:red;" onclick="document.getElementById('driveModal').style.display='none'">CLOSE</button>
+    </div>
+</div>
+
 <script>
     let database = JSON.parse(localStorage.getItem('proAccountDB')) || [];
+    document.getElementById('driveUrl').value = localStorage.getItem('proDriveURL') || "";
     let editID = null;
+
+    function saveDriveLink() {
+        localStorage.setItem('proDriveURL', document.getElementById('driveUrl').value);
+        document.getElementById('driveModal').style.display = 'none';
+        alert("Drive URL சேமிக்கப்பட்டது!");
+    }
+
+    function openDriveLink() {
+        const link = localStorage.getItem('proDriveURL');
+        if(link) window.open(link, '_blank');
+        else alert("Link இல்லை!");
+    }
 
     function handleData() {
         const d = document.getElementById('tDate').value;
         const n = document.getElementById('tName').value;
         const p = document.getElementById('tPhone').value;
         const dt = document.getElementById('tDetails').value;
+        const em = document.getElementById('tEmail').value;
 
         if(!d || !n) return alert("விவரங்களை நிரப்புக!");
 
-        const obj = { date: d, name: n, phone: p, details: dt };
+        const obj = { date: d, name: n, phone: p, details: dt, email: em };
 
         if(editID === null) {
             database.push(obj);
@@ -85,7 +107,7 @@
 
         database.sort((a, b) => new Date(a.date) - new Date(b.date));
         localStorage.setItem('proAccountDB', JSON.stringify(database));
-        drawTable();
+        drawTable(); 
         clearInput();
     }
 
@@ -93,17 +115,18 @@
         const body = document.getElementById('tableBody');
         const filter = document.getElementById('find').value.toLowerCase();
         body.innerHTML = "";
+        document.getElementById('countDisplay').innerText = "(" + database.length + ")";
 
         database.forEach((item, index) => {
-            if(item.name.toLowerCase().includes(filter) || item.phone.includes(filter)) {
+            if(item.name.toLowerCase().includes(filter) || item.phone.includes(filter) || (item.email && item.email.toLowerCase().includes(filter))) {
                 const s = item.date.split("-");
                 const dDisplay = s.length > 1 ? `${s[2]}/${s[1]}/${s[0]}` : item.date;
-
                 body.innerHTML += `<tr>
                     <td class="date-text">${dDisplay}</td>
                     <td class="name-text">${item.name}</td>
                     <td>${item.phone}</td>
                     <td>${item.details}</td>
+                    <td>${item.email || ''}</td>
                     <td>
                         <span style="color:blue; cursor:pointer;" onclick="goEdit(${index})">EDIT</span> | 
                         <span style="color:red; cursor:pointer;" onclick="goDelete(${index})">DEL</span>
@@ -119,6 +142,7 @@
         document.getElementById('tName').value = itm.name;
         document.getElementById('tPhone').value = itm.phone;
         document.getElementById('tDetails').value = itm.details;
+        document.getElementById('tEmail').value = itm.email || "";
         editID = i;
         document.getElementById('mainBtn').innerText = "UPDATE ENTRY";
         window.scrollTo(0, 0);
@@ -137,15 +161,18 @@
         document.getElementById('tName').value = "";
         document.getElementById('tPhone').value = "";
         document.getElementById('tDetails').value = "";
+        document.getElementById('tEmail').value = "";
     }
 
     function exportData() {
         if (database.length === 0) return alert("டேட்டா இல்லை!");
-        let csv = "Date,Name,Mobile,Details\n";
-        database.forEach(r => csv += `${r.date},${r.name},${r.phone},${r.details}\n`);
+        let csv = "Date,Name,Mobile,Details,Email\n";
+        database.forEach(r => {
+            csv += `${r.date},${r.name},${r.phone},${r.details},${r.email || ''}\n`;
+        });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(new Blob([csv], {type: 'text/csv'}));
-        a.download = 'Statement_Backup.csv';
+        a.download = 'IRCTC_Backup_2026.csv';
         a.click();
     }
 
@@ -158,17 +185,23 @@
             rows.forEach(row => {
                 const p = row.split(",");
                 if(p.length >= 4) {
-                    database.push({date: p[0], name: p[1], phone: p[2], details: p[3].trim()});
+                    database.push({
+                        date: p[0], 
+                        name: p[1], 
+                        phone: p[2], 
+                        details: p[3], 
+                        email: p[4] ? p[4].trim() : ""
+                    });
                 }
             });
             database.sort((a, b) => new Date(a.date) - new Date(b.date));
             localStorage.setItem('proAccountDB', JSON.stringify(database));
             drawTable();
-            alert("இம்போர்ட் முடிந்தது!");
+            alert("இம்போர்ட் செய்யப்பட்டது!");
         };
         reader.readAsText(file);
     }
-
+    
     drawTable();
 </script>
 </body>
